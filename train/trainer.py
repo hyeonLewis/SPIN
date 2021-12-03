@@ -106,7 +106,9 @@ class Trainer(BaseTrainer):
         return loss_regr_pose, loss_regr_betas
 
     def train_step(self, input_batch):
+
         self.model.train()
+
 
         # Get data from the batch
         images = input_batch['img'] # input image
@@ -114,8 +116,8 @@ class Trainer(BaseTrainer):
         gt_pose = input_batch['pose'] # SMPL pose parameters
         gt_betas = input_batch['betas'] # SMPL beta parameters
         gt_joints = input_batch['pose_3d'] # 3D pose
-        has_smpl = input_batch['has_smpl'].byte() # flag that indicates whether SMPL parameters are valid
-        has_pose_3d = input_batch['has_pose_3d'].byte() # flag that indicates whether 3D pose is valid
+        has_smpl = input_batch['has_smpl'].bool() # flag that indicates whether SMPL parameters are valid
+        has_pose_3d = input_batch['has_pose_3d'].bool() # flag that indicates whether 3D pose is valid
         is_flipped = input_batch['is_flipped'] # flag that indicates whether image was flipped during data augmentation
         rot_angle = input_batch['rot_angle'] # rotation angle used for data augmentation
         dataset_name = input_batch['dataset_name'] # name of the dataset the image comes from
@@ -281,15 +283,14 @@ class Trainer(BaseTrainer):
 
     def train_summaries(self, input_batch, output, losses):
         images = input_batch['img']
-        images = images * torch.tensor([0.229, 0.224, 0.225], device=images.device).reshape(1,3,1,1)
-        images = images + torch.tensor([0.485, 0.456, 0.406], device=images.device).reshape(1,3,1,1)
-
+        images = images * torch.tensor([0.229, 0.224, 0.225], device=self.device).reshape(1,3,1,1) #images.device -> self.device
+        images = images + torch.tensor([0.485, 0.456, 0.406], device=self.device).reshape(1,3,1,1)
         pred_vertices = output['pred_vertices']
         opt_vertices = output['opt_vertices']
         pred_cam_t = output['pred_cam_t']
         opt_cam_t = output['opt_cam_t']
-        images_pred = self.renderer.visualize_tb(pred_vertices, pred_cam_t, images)
-        images_opt = self.renderer.visualize_tb(opt_vertices, opt_cam_t, images)
+        images_pred = self.renderer.visualize_mesh(pred_vertices, pred_cam_t, images)
+        images_opt = self.renderer.visualize_mesh(opt_vertices, opt_cam_t, images) #opt_cam_t
         self.summary_writer.add_image('pred_shape', images_pred, self.step_count)
         self.summary_writer.add_image('opt_shape', images_opt, self.step_count)
         for loss_name, val in losses.items():

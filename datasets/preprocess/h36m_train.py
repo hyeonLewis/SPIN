@@ -5,19 +5,20 @@ import glob
 import h5py
 import numpy as np
 import argparse
-from spacepy import pycdf
+#from spacepy import pycdf
 from .read_openpose import read_openpose
+import cdflib
 
 # Illustrative script for training data extraction
 # No SMPL parameters will be included in the .npz file.
-def h36m_train_extract(dataset_path, openpose_path, out_path, extract_img=False):
+def h36m_train_extract(dataset_path, openpose_path, out_path, protocol=1, extract_img=False):
 
     # convert joints to global order
     h36m_idx = [11, 6, 7, 8, 1, 2, 3, 12, 24, 14, 15, 17, 18, 19, 25, 26, 27]
     global_idx = [14, 3, 4, 5, 2, 1, 0, 16, 12, 17, 18, 9, 10, 11, 8, 7, 6]
 
     # structs we use
-    imgnames_, scales_, centers_, parts_, Ss_, openposes_  = [], [], [], [], [], []
+    imgnames_, scales_, centers_, parts_, Ss_ , openposes_ = [], [], [], [], [], []
 
     # users in validation set
     user_list = [1, 5, 6, 7, 8]
@@ -25,18 +26,23 @@ def h36m_train_extract(dataset_path, openpose_path, out_path, extract_img=False)
     # go over each user
     for user_i in user_list:
         user_name = 'S%d' % user_i
+
         # path with GT bounding boxes
         bbox_path = os.path.join(dataset_path, user_name, 'MySegmentsMat', 'ground_truth_bb')
+
         # path with GT 3D pose
         pose_path = os.path.join(dataset_path, user_name, 'MyPoseFeatures', 'D3_Positions_mono')
+
         # path with GT 2D pose
         pose2d_path = os.path.join(dataset_path, user_name, 'MyPoseFeatures', 'D2_Positions')
+
         # path with videos
         vid_path = os.path.join(dataset_path, user_name, 'Videos')
 
         # go over all the sequences of each user
         seq_list = glob.glob(os.path.join(pose_path, '*.cdf'))
         seq_list.sort()
+
         for seq_i in seq_list:
 
             # sequence info
@@ -48,11 +54,12 @@ def h36m_train_extract(dataset_path, openpose_path, out_path, extract_img=False)
                 continue
 
             # 3D pose file
-            poses_3d = pycdf.CDF(seq_i)['Pose'][0]
+            #poses_3d = pycdf.CDF(seq_i)['Pose'][0]
+            poses_3d = cdflib.CDF(seq_i)['Pose'][0]
 
             # 2D pose file
             pose2d_file = os.path.join(pose2d_path, seq_name)
-            poses_2d = pycdf.CDF(pose2d_file)['Pose'][0]
+            poses_2d = cdflib.CDF(pose2d_file)['Pose'][0]
 
             # bbox file
             bbox_file = os.path.join(bbox_path, seq_name.replace('cdf', 'mat'))
@@ -89,9 +96,9 @@ def h36m_train_extract(dataset_path, openpose_path, out_path, extract_img=False)
                     center = [(bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2]
                     scale = 0.9*max(bbox[2]-bbox[0], bbox[3]-bbox[1])/200.
 
-                    # read GT 3D pose
+                    # read GT 2D pose
                     partall = np.reshape(poses_2d[frame_i,:], [-1,2])
-                    part17 = partalll[h36m_idx]
+                    part17 = partall[h36m_idx]
                     part = np.zeros([24,3])
                     part[global_idx, :2] = part17
                     part[global_idx, 2] = 1
@@ -103,11 +110,11 @@ def h36m_train_extract(dataset_path, openpose_path, out_path, extract_img=False)
                     S24 = np.zeros([24,4])
                     S24[global_idx, :3] = S17
                     S24[global_idx, 3] = 1
-                    
+
                     # read openpose detections
                     json_file = os.path.join(openpose_path, 'coco',
                         imgname.replace('.jpg', '_keypoints.json'))
-                    openpose = read_openpose(json_file, part, 'h36m')
+                    openpose = read_openpose(json_file, part, 'h36m') 
 
                     # store data
                     imgnames_.append(os.path.join('images', imgname))
@@ -120,7 +127,8 @@ def h36m_train_extract(dataset_path, openpose_path, out_path, extract_img=False)
     # store the data struct
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
-    out_file = os.path.join(out_path, 'h36m_train.npz')
+    out_file = os.path.join(out_path, 
+        'h36m_train.npz')
     np.savez(out_file, imgname=imgnames_,
                        center=centers_,
                        scale=scales_,

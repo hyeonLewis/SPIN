@@ -1,5 +1,5 @@
 # SPIN - SMPL oPtimization IN the loop [Modified by hyeonwoo Kim]
-Code repository for the paper:  
+Modified code repository to use pytorch3d for the paper:  
 **Learning to Reconstruct 3D Human Pose and Shape via Model-fitting in the Loop**  
 [Nikos Kolotouros](https://www.seas.upenn.edu/~nkolot/)\*, [Georgios Pavlakos](https://www.seas.upenn.edu/~pavlakos/)\*, [Michael J. Black](https://ps.is.mpg.de/~black), [Kostas Daniilidis](http://www.cis.upenn.edu/~kostas/)  
 ICCV 2019  

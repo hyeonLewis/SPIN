@@ -8,7 +8,7 @@ ICCV 2019
 ![teaser](teaser.png)
 
 ## Brief explaination of this repository
-Since the original SPIN code has lots of dependencies with python and pytorch (especially with pyrender).
+Since the original SPIN code has lots of dependencies with python and pytorch (especially with pyrender, neural-renderer-pytorch).
 So, I changed pyrender to pytorch3d that gives us the same result.
 Now, you can easily use upper version of CUDA, which can save your time.
 

@@ -1,27 +1,40 @@
+from pytorch3d.renderer.mesh.textures import TexturesUV
 import torch
 import numpy as np
-import neural_renderer as nr
 import config
-
+import pytorch3d
+import os
+import sys
+sys.path.append(os.path.abspath(''))
+os.environ["CUB_HOME"] = os.getcwd() + "/cub-1.10.0"
+# Data structures and functions for rendering
+from pytorch3d.io import load_objs_as_meshes, load_obj
+from pytorch3d.structures import Meshes
+from pytorch3d.renderer import (
+    PerspectiveCameras, 
+    PointLights, 
+    Materials, 
+    RasterizationSettings, 
+    MeshRenderer, 
+    MeshRasterizer,  
+    SoftPhongShader,
+    TexturesVertex,
+    TexturesUV
+)
 from models import SMPL
-
+#Input : pred_vertices, pred_camera
 class PartRenderer():
     """Renderer used to render segmentation masks and part segmentations.
     Internally it uses the Neural 3D Mesh Renderer
     """
     def __init__(self, focal_length=5000., render_res=224):
         # Parameters for rendering
-        self.focal_length = focal_length
+        self.focal_length = ((focal_length, focal_length),)
         self.render_res = render_res
-        # We use Neural 3D mesh renderer for rendering masks and part segmentations
-        self.neural_renderer = nr.Renderer(dist_coeffs=None, orig_size=self.render_res,
-                                           image_size=render_res,
-                                           light_intensity_ambient=1,
-                                           light_intensity_directional=0,
-                                           anti_aliasing=False)
+        self.camera_center = ((render_res // 2, render_res // 2),)
         self.faces = torch.from_numpy(SMPL(config.SMPL_MODEL_DIR).faces.astype(np.int32)).cuda()
         textures = np.load(config.VERTEX_TEXTURE_FILE)
-        self.textures = torch.from_numpy(textures).cuda().float()
+        self.textures = torch.from_numpy(textures).cuda().float() #float()
         self.cube_parts = torch.cuda.FloatTensor(np.load(config.CUBE_PARTS_FILE))
 
     def get_parts(self, parts, mask):
@@ -34,20 +47,67 @@ class PartRenderer():
         parts = parts.view(bn,h,w).long()
         return parts
 
-    def __call__(self, vertices, camera):
+    def __call__(self, vertices, camera, images):
         """Wrapper function for rendering process."""
+        device = torch.device('cuda')
         # Estimate camera parameters given a fixed focal length
-        cam_t = torch.stack([camera[:,1], camera[:,2], 2*self.focal_length/(self.render_res * camera[:,0] +1e-9)],dim=-1)
+
+        cam_t = torch.stack([camera[:,1], camera[:,2], 2*5000/(self.render_res * camera[:,0] +1e-9)],dim=0)
         batch_size = vertices.shape[0]
-        K = torch.eye(3, device=vertices.device)
-        K[0,0] = self.focal_length 
-        K[1,1] = self.focal_length 
-        K[2,2] = 1
-        K[0,2] = self.render_res / 2.
-        K[1,2] = self.render_res / 2.
-        K = K[None, :, :].expand(batch_size, -1, -1)
         R = torch.eye(3, device=vertices.device)[None, :, :].expand(batch_size, -1, -1)
+
+        '''
         faces = self.faces[None, :, :].expand(batch_size, -1, -1)
-        parts, _, mask =  self.neural_renderer(vertices, faces, textures=self.textures.expand(batch_size, -1, -1, -1, -1, -1), K=K, R=R, t=cam_t.unsqueeze(1))
-        parts = self.get_parts(parts, mask)
-        return mask, parts
+        tex = torch.from_numpy(images.cpu().numpy()/255.)[None].to(device)
+        tex = tex.squeeze(dim = 0)
+        tex = tex.transpose(1, 3)
+        tex = tex.transpose(1, 2)
+
+        _, _, aux = load_obj(('/home/lewiskim/anaconda3/envs/spin/SPIN/utils/smpl_uv.obj'), device = device)
+        verts_uvs = torch.tensor(aux.verts_uvs)
+        '''
+        cameras = PerspectiveCameras(device = device, focal_length = self.focal_length, principal_point=self.camera_center, R = R, T = cam_t.reshape(batch_size, 3), image_size=((self.render_res, self.render_res),), in_ndc=False)
+
+        raster_settings = RasterizationSettings(
+            image_size=self.render_res, 
+            blur_radius=0.0, 
+        )
+
+        lights = PointLights(device=device, location=[[5, 5, -5]]) 
+
+        renderer = MeshRenderer(
+            rasterizer = MeshRasterizer(
+                cameras = cameras,
+                raster_settings=raster_settings
+            ),
+            shader=SoftPhongShader(
+                device = device,
+                cameras=cameras,
+                lights=lights
+            )
+        )
+        
+        faces_uvs = self.textures.transpose(2, 5)
+        faces_uvs = faces_uvs[:, :, :, 0, 0, 0].expand(batch_size, -1, -1).to(device)
+
+        vertices = vertices.reshape(vertices.shape[0], vertices.shape[1], -1).to(device)
+
+        verts_rgb = torch.ones_like(vertices)
+        textures = TexturesVertex(verts_features=verts_rgb.to(device))
+ 
+        mesh = Meshes(
+            verts = vertices,
+            faces = faces_uvs,
+            textures = textures)
+        
+        parts = renderer(mesh, cameras = cameras, lights = lights)
+        rend_img = parts[:, :, :, :3] #[32, 224, 224, 3]
+        mask = ~(rend_img == 1)[:,:,:,:,None]
+        mask = mask.squeeze()
+        mask = mask[:, :, :, :1]
+        rend_img = torch.transpose(rend_img, 1, 3)
+        rend_img = torch.transpose(rend_img, 2, 3)
+        parts_ = self.get_parts(rend_img/255, mask)
+        masks = torch.ones_like(mask)
+        masks = masks * mask.int().float()
+        return masks, parts_

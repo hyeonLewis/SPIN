@@ -22,7 +22,7 @@ import json
 from collections import namedtuple
 from tqdm import tqdm
 import torchgeometry as tgm
-
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import config
 import constants
 from models import hmr, SMPL
@@ -30,7 +30,7 @@ from datasets import BaseDataset
 from utils.imutils import uncrop
 from utils.pose_utils import reconstruction_error
 from utils.part_utils import PartRenderer
-
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
@@ -180,7 +180,7 @@ def run_evaluation(model, dataset_name, dataset, result_file,
 
         # If mask or part evaluation, render the mask and part images
         if eval_masks or eval_parts:
-            mask, parts = renderer(pred_vertices, pred_camera)
+            mask, parts = renderer(pred_vertices, pred_camera, images)
 
         # Mask evaluation (for LSP)
         if eval_masks:

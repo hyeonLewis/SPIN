@@ -1,3 +1,4 @@
+#Codes for eval.py part segmentation with pytorch3d
 from pytorch3d.renderer.mesh.textures import TexturesUV
 import torch
 import numpy as np
@@ -107,7 +108,7 @@ class PartRenderer():
         mask = mask[:, :, :, :1]
         rend_img = torch.transpose(rend_img, 1, 3)
         rend_img = torch.transpose(rend_img, 2, 3)
-        parts_ = self.get_parts(rend_img/255, mask)
+        parts_ = self.get_parts(rend_img/255, mask) #Normalizing
         masks = torch.ones_like(mask)
         masks = masks * mask.int().float()
         return masks, parts_

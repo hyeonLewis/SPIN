@@ -3,7 +3,9 @@ This file contains functions that are used to perform data augmentation.
 """
 import torch
 import numpy as np
-import scipy.misc
+import imutils as Im
+import PIL
+from PIL import Image #scipi.misc.imrotate, imresize have been deprecated since scipy==1.3.0
 import cv2
 
 import constants
@@ -73,11 +75,19 @@ def crop(img, center, scale, res, rot=0):
 
     if not rot == 0:
         # Remove padding
-        new_img = scipy.misc.imrotate(new_img, rot)
+        #new_img = scipy.misc.imrotate(new_img, rot)
+        new_img = rotate_image(new_img, rot)
         new_img = new_img[pad:-pad, pad:-pad]
-
-    new_img = scipy.misc.imresize(new_img, res)
+     
+    new_img = cv2.resize(new_img, dsize=(res[0], res[1]), interpolation=cv2.INTER_NEAREST)
     return new_img
+
+#Added by lewiskim 
+def rotate_image(image, angle):
+  image_center = tuple(np.array(image.shape[1::-1]) / 2)
+  rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+  result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_NEAREST)
+  return result
 
 def uncrop(img, center, scale, orig_shape, rot=0, is_rgb=True):
     """'Undo' the image cropping/resizing.
@@ -90,7 +100,7 @@ def uncrop(img, center, scale, orig_shape, rot=0, is_rgb=True):
     br = np.array(transform([res[0]+1,res[1]+1], center, scale, res, invert=1))-1
     # size of cropped image
     crop_shape = [br[1] - ul[1], br[0] - ul[0]]
-
+    
     new_shape = [br[1] - ul[1], br[0] - ul[0]]
     if len(img.shape) > 2:
         new_shape += [img.shape[2]]
@@ -101,7 +111,8 @@ def uncrop(img, center, scale, orig_shape, rot=0, is_rgb=True):
     # Range to sample from original image
     old_x = max(0, ul[0]), min(orig_shape[1], br[0])
     old_y = max(0, ul[1]), min(orig_shape[0], br[1])
-    img = scipy.misc.imresize(img, crop_shape, interp='nearest')
+    img = cv2.resize(img, dsize=(crop_shape[1], crop_shape[0]), interpolation=cv2.INTER_NEAREST)
+
     new_img[old_y[0]:old_y[1], old_x[0]:old_x[1]] = img[new_y[0]:new_y[1], new_x[0]:new_x[1]]
     return new_img
 

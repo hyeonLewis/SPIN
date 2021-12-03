@@ -1,4 +1,4 @@
-# SPIN - SMPL oPtimization IN the loop
+# SPIN - SMPL oPtimization IN the loop [Modified by hyeonwoo Kim]
 Code repository for the paper:  
 **Learning to Reconstruct 3D Human Pose and Shape via Model-fitting in the Loop**  
 [Nikos Kolotouros](https://www.seas.upenn.edu/~nkolot/)\*, [Georgios Pavlakos](https://www.seas.upenn.edu/~pavlakos/)\*, [Michael J. Black](https://ps.is.mpg.de/~black), [Kostas Daniilidis](http://www.cis.upenn.edu/~kostas/)  
@@ -7,18 +7,22 @@ ICCV 2019
 
 ![teaser](teaser.png)
 
-## Installation instructions
-We suggest to use the [docker image](https://hub.docker.com/r/chaneyk/spin) we provide that has all dependencies
-compiled and preinstalled. Alternatively you can create a `python3` virtual environment and install all the relevant dependencies as follows:
+## Brief explaination of this repository
+Since the original SPIN code has lots of dependencies with python and pytorch (especially with pyrender).
+So, I changed pyrender to pytorch3d that gives us the same result.
+Now, you can easily use upper version of CUDA, which can save your time.
 
+## Installation instructions
+I suggest to use conda virtual env to use pytorch3d renderer with python >= 3.7, pytorch >= 1.6.0
+You can download compatible pytorch3d files here (https://anaconda.org/pytorch3d/pytorch3d/files)
+You can use both CUDA == 10.1 and 11.1 or other compatible versions that pytorch3d provide.
+Except Pytorch, I suggest you to download other libraries with requirement.txt
 ```
 virtualenv spin -p python3
 source spin/bin/activate
 pip install -U pip
 pip install -r requirements.txt
 ```
-
-If you choose to use a virtual environment, please look at the [instructions](https://pyrender.readthedocs.io/en/latest/install/index.html) for installing pyrender. 
 
 After finishing with the installation, you can continue with running the demo/evaluation/training code.
 In case you want to evaluate our approach on Human3.6M, you also need to manually install the [pycdf package of the spacepy library](https://pythonhosted.org/SpacePy/pycdf.html) to process some of the original files. If you face difficulties with the installation, you can find more elaborate instructions [here](https://stackoverflow.com/questions/37232008/how-read-common-data-formatcdf-in-python).

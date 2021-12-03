@@ -5,17 +5,16 @@ import glob
 import h5py
 import numpy as np
 import argparse
-from spacepy import pycdf
+#from spacepy import pycdf
+import cdflib
 
 def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
 
     # convert joints to global order
     h36m_idx = [11, 6, 7, 8, 1, 2, 3, 12, 24, 14, 15, 17, 18, 19, 25, 26, 27]
     global_idx = [14, 3, 4, 5, 2, 1, 0, 16, 12, 17, 18, 9, 10, 11, 8, 7, 6]
-
     # structs we use
     imgnames_, scales_, centers_, parts_, Ss_  = [], [], [], [], []
-
     # users in validation set
     user_list = [9, 11]
 
@@ -28,22 +27,22 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
         pose_path = os.path.join(dataset_path, user_name, 'MyPoseFeatures', 'D3_Positions_mono')
         # path with videos
         vid_path = os.path.join(dataset_path, user_name, 'Videos')
-
         # go over all the sequences of each user
         seq_list = glob.glob(os.path.join(pose_path, '*.cdf'))
         seq_list.sort()
-        for seq_i in seq_list:
 
+        for seq_i in seq_list:
             # sequence info
             seq_name = seq_i.split('/')[-1]
             action, camera, _ = seq_name.split('.')
             action = action.replace(' ', '_')
+
             # irrelevant sequences
             if action == '_ALL':
                 continue
-
             # 3D pose file
-            poses_3d = pycdf.CDF(seq_i)['Pose'][0]
+            #poses_3d = pycdf.CDF(seq_i)['Pose'][0]
+            poses_3d = cdflib.CDF(seq_i)['Pose'][0]
 
             # bbox file
             bbox_file = os.path.join(bbox_path, seq_name.replace('cdf', 'mat'))
@@ -94,7 +93,7 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
                     centers_.append(center)
                     scales_.append(scale)
                     Ss_.append(S24)
-
+                    
     # store the data struct
     if not os.path.isdir(out_path):
         os.makedirs(out_path)

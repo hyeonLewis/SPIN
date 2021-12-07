@@ -9,14 +9,14 @@ ICCV 2019
 
 ## Brief explaination of this repository
 Since the original SPIN code has lots of dependencies with python and pytorch (especially with pyrender, neural-renderer-pytorch).
-So, I changed pyrender to pytorch3d that gives us the same result.
+So, I changed pyrender, neural renderer to pytorch3d that gives us the same result.
 Now, you can easily use upper version of CUDA, which can save your time.
 
 ## Installation instructions
 I suggest to use conda virtual env to use pytorch3d renderer with python >= 3.7, pytorch >= 1.6.0
 You can download compatible pytorch3d files here (https://anaconda.org/pytorch3d/pytorch3d/files)
 You can use both CUDA == 10.1 and 11.1 or other compatible versions that pytorch3d provide.
-Except Pytorch, I suggest you to download other libraries with requirement.txt
+Except Pytorch3d related libraries, I suggest you to download other libraries with requirement.txt
 ```
 virtualenv spin -p python3
 source spin/bin/activate
